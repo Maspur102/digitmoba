@@ -13,7 +13,7 @@ class DigitmobaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Digitmoba',
-      debugShowCheckedModeBanner: false, // Menghilangkan banner debug di pojok kanan atas
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.blue,

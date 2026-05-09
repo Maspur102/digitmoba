@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/git_service.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,11 +14,12 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final GitService _gitService = GitService();
   String? _selectedDirectory;
-  String _consoleOutput = "Siap digunakan... Menunggu folder project dipilih.";
+  String _consoleOutput = "Siap digunakan... Menunggu instruksi.";
   
   final TextEditingController _commitController = TextEditingController();
-  final TextEditingController _tokenController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
+
+  String _savedRepoUrl = "";
+  String _savedToken = "";
 
   bool _isLoading = true;
 
@@ -28,9 +31,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _initSystem() async {
     await _gitService.initGit();
+    await _loadSettingsData(); 
     setState(() {
       _isLoading = false;
-      _consoleOutput = "Sistem Digitmoba berhasil diinisialisasi.";
+    });
+  }
+
+  Future<void> _loadSettingsData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _savedRepoUrl = prefs.getString('repoUrl') ?? '';
+      _savedToken = prefs.getString('token') ?? '';
+      
+      if (_savedRepoUrl.isEmpty || _savedToken.isEmpty) {
+        _consoleOutput = "PERINGATAN: Link Repository atau Token belum diatur!\nSilakan buka menu Pengaturan (ikon gear di pojok kanan atas).";
+      } else {
+        _consoleOutput = "Sistem siap.\nRepo aktif: $_savedRepoUrl";
+      }
     });
   }
 
@@ -39,7 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (directoryPath != null) {
       setState(() {
         _selectedDirectory = directoryPath;
-        _consoleOutput = "Folder aktif:\n$_selectedDirectory";
+        _consoleOutput += "\nFolder aktif:\n$_selectedDirectory";
       });
     }
   }
@@ -50,53 +67,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
     
+    if (args.contains('push') && (_savedRepoUrl.isEmpty || _savedToken.isEmpty)) {
+      setState(() => _consoleOutput = "Gagal Push: Anda harus mengisi Link Repo dan Token di Pengaturan!");
+      return;
+    }
+    
     setState(() => _consoleOutput = "Menjalankan git ${args.join(' ')}...\nMohon tunggu.");
     
     String result = await _gitService.runCommand(
       args, 
       _selectedDirectory!,
-      token: _tokenController.text,
-      username: _usernameController.text,
+      repoUrl: _savedRepoUrl,
+      token: _savedToken,
     );
     
     setState(() {
-      if (result.trim().isEmpty) {
-        _consoleOutput = "Perintah git ${args.join(' ')} berhasil dieksekusi tanpa output.";
-      } else {
-        _consoleOutput = result;
-      }
+      _consoleOutput = result;
     });
+  }
+
+  void _openSettings() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+    
+    if (result == true) {
+      await _loadSettingsData();
+    }
   }
 
   @override
   void dispose() {
     _commitController.dispose();
-    _tokenController.dispose();
-    _usernameController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Menyiapkan Binary Git...")
-            ],
-          ),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Digitmoba Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Pengaturan Git',
+            onPressed: _openSettings,
+          )
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -126,34 +149,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
               const SizedBox(height: 24),
               
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'GitHub Username', 
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _tokenController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Personal Access Token', 
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.key),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
               TextField(
                 controller: _commitController,
                 maxLines: 2,
