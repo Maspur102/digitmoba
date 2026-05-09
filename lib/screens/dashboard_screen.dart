@@ -29,12 +29,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _initSystem();
   }
 
+  // --- PERBAIKAN LOADING DISINI ---
   Future<void> _initSystem() async {
-    await _gitService.initGit();
-    await _loadSettingsData(); 
-    setState(() {
-      _isLoading = false;
-    });
+    try {
+      await _gitService.initGit();
+      await _loadSettingsData(); 
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _consoleOutput = "GAGAL INISIALISASI SISTEM:\n$e\n\nPastikan Anda sudah mendownload file Git di folder assets/bin/git !";
+      });
+    }
   }
 
   Future<void> _loadSettingsData() async {
@@ -43,10 +51,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _savedRepoUrl = prefs.getString('repoUrl') ?? '';
       _savedToken = prefs.getString('token') ?? '';
       
-      if (_savedRepoUrl.isEmpty || _savedToken.isEmpty) {
-        _consoleOutput = "PERINGATAN: Link Repository atau Token belum diatur!\nSilakan buka menu Pengaturan (ikon gear di pojok kanan atas).";
-      } else {
-        _consoleOutput = "Sistem siap.\nRepo aktif: $_savedRepoUrl";
+      // Mencegah pesan error inisialisasi tertimpa oleh pesan peringatan
+      if (!_consoleOutput.startsWith("GAGAL")) {
+        if (_savedRepoUrl.isEmpty || _savedToken.isEmpty) {
+          _consoleOutput = "PERINGATAN: Link Repository atau Token belum diatur!\nSilakan buka menu Pengaturan (ikon gear di pojok kanan atas).";
+        } else {
+          _consoleOutput = "Sistem siap.\nRepo aktif: $_savedRepoUrl";
+        }
       }
     });
   }
@@ -106,7 +117,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text("Menyiapkan Sistem Git...")
+            ],
+          ),
+        )
+      );
     }
 
     return Scaffold(
@@ -213,8 +235,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: SingleChildScrollView(
                   child: Text(
                     _consoleOutput,
-                    style: const TextStyle(
-                      color: Colors.greenAccent, 
+                    style: TextStyle(
+                      // Warna akan otomatis merah jika terjadi Error sistem
+                      color: _consoleOutput.startsWith("GAGAL") ? Colors.redAccent : Colors.greenAccent, 
                       fontFamily: 'monospace',
                       fontSize: 13,
                     ),
