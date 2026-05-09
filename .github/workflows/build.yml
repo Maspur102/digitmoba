@@ -1,0 +1,45 @@
+name: Build Digitmoba APK
+
+# Kapan actions ini akan berjalan?
+on:
+  push:
+    branches:
+      - main # Otomatis build saat ada kode baru yang di-push ke branch main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Menambahkan tombol agar kamu bisa klik "Run workflow" secara manual di GitHub
+
+jobs:
+  build:
+    name: Build APK Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Java (Dibutuhkan untuk Android Build)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Menggunakan Java 17 yang paling stabil untuk SDK 34
+
+      - name: 3. Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # Otomatis menggunakan versi Flutter stable terbaru
+          cache: true # Mempercepat proses build selanjutnya
+
+      - name: 4. Install Dependencies
+        run: flutter pub get
+
+      - name: 5. Build APK Release
+        run: flutter build apk --release
+
+      - name: 6. Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Digitmoba-Release-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7 # APK akan tersimpan di GitHub selama 7 hari untuk didownload
