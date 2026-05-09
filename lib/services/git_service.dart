@@ -1,27 +1,27 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 class GitService {
   String? _gitExecutablePath;
 
   Future<void> initGit() async {
-    final dir = await getApplicationSupportDirectory();
+    final directory = await getApplicationSupportDirectory();
+    _gitExecutablePath = '${directory.path}/git';
+    final file = File(_gitExecutablePath!);
     
-    // Melompat keluar dari folder 'files' dan masuk ke folder 'lib' bawaan sistem Android
-    final libDir = Directory('${dir.parent.path}/lib');
-
-    if (await libDir.exists()) {
-      // Mencari file libgit.so di dalam folder arsitektur native (arm64)
-      await for (var entity in libDir.list(recursive: true)) {
-        if (entity.path.endsWith('libgit.so')) {
-          _gitExecutablePath = entity.path;
-          break;
-        }
+    // Ekstrak file dari assets ke memori internal
+    if (!await file.exists() || await file.length() < 1000) { 
+      try {
+        ByteData data = await rootBundle.load('assets/bin/git');
+        List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        await file.writeAsBytes(bytes);
+        
+        // Memberikan izin eksekusi
+        await Process.run('chmod', ['755', _gitExecutablePath!]);
+      } catch (e) {
+        throw Exception("Gagal ekstrak Git: $e");
       }
-    }
-
-    if (_gitExecutablePath == null) {
-      throw Exception("Gagal! File libgit.so tidak ditemukan di sistem native Android. Pastikan folder jniLibs terbawa saat build APK.");
     }
   }
 
@@ -58,11 +58,11 @@ class GitService {
           'HOME': workingDirectory,   
         },
       ).timeout(const Duration(seconds: 15), onTimeout: () {
-        throw Exception("WAKTU HABIS! Proses Git tidak merespon.");
+        throw Exception("WAKTU HABIS! Proses Git nyangkut.");
       });
 
       if (result.exitCode == 0) {
-        return result.stdout.toString().trim().isEmpty ? "Perintah sukses dijalankan." : result.stdout.toString();
+        return result.stdout.toString().trim().isEmpty ? "Perintah sukses dijalankan tanpa output tambahan." : result.stdout.toString();
       } else {
         return 'Error Git:\n${result.stderr}';
       }

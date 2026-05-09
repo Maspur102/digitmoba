@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
+    // Tambahkan plugin kotlin jika memakai swift/kotlin standar
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Plugin utama untuk build flutter terbaru
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -11,29 +12,33 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "1.8"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // ID Unik Aplikasi
         applicationId = "com.example.digitmoba"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        
+        // Versi minimal Android yang didukung
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        
+        // --- JURUS CHEAT CODE: TARGET SDK 28 ---
+        // Menurunkan targetSdk ke 28 agar sistem Android (W^X) 
+        // tidak memblokir pengeksekusian file binary Git.
+        targetSdk = 28 
+        
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Konfigurasi bawaan saat kita merilis ke format APK Release
             signingConfig = signingConfigs.getByName("debug")
         }
     }
